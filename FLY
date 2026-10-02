@@ -1,0 +1,76 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+
+local flying, speed = false, 60
+local up, down = 0, 0
+local bv, bg
+
+local gui = Instance.new("ScreenGui")
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local function makeBtn(text, y)
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.fromOffset(80, 40)
+	b.Position = UDim2.new(0, 10, 0.4, y)
+	b.Text = text
+	b.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	b.TextColor3 = Color3.new(1, 1, 1)
+	b.Parent = gui
+	return b
+end
+
+local toggle = makeBtn("Fly: OFF", 0)
+local upB = makeBtn("▲", 50)
+local downB = makeBtn("▼", 100)
+
+local function stopFly()
+	flying = false
+	toggle.Text = "Fly: OFF"
+	if bv then bv:Destroy() end
+	if bg then bg:Destroy() end
+	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if hum then hum.PlatformStand = false end
+end
+
+local function startFly()
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not (hrp and hum) then return end
+	flying = true
+	toggle.Text = "Fly: ON"
+	hum.PlatformStand = true
+	bv = Instance.new("BodyVelocity")
+	bv.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+	bv.Velocity = Vector3.zero
+	bv.Parent = hrp
+	bg = Instance.new("BodyGyro")
+	bg.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+	bg.P = 1e4
+	bg.Parent = hrp
+end
+
+toggle.MouseButton1Click:Connect(function()
+	if flying then stopFly() else startFly() end
+end)
+
+upB.MouseButton1Down:Connect(function() up = 1 end)
+upB.MouseButton1Up:Connect(function() up = 0 end)
+downB.MouseButton1Down:Connect(function() down = 1 end)
+downB.MouseButton1Up:Connect(function() down = 0 end)
+
+RunService.RenderStepped:Connect(function()
+	if not flying then return end
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not (hrp and hum and bv and bg) then return end
+	local cam = workspace.CurrentCamera
+	bv.Velocity = hum.MoveDirection * speed + Vector3.new(0, (up - down) * speed, 0)
+	local look = cam.CFrame.LookVector
+	bg.CFrame = CFrame.new(hrp.Position, hrp.Position + Vector3.new(look.X, 0, look.Z))
+end)
+
+player.CharacterAdded:Connect(stopFly)
